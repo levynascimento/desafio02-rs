@@ -10,28 +10,76 @@ app.use(cors());
 const users = [];
 
 function checksExistsUserAccount(request, response, next) {
-  // Complete aqui
+  const { username } = request.headers;
+
+  const user = users.find(item => item.username === username);
+
+  if(!user) {
+    return response.status(404).json({ error: "User not found!" });
+  }
+
+  request.user = user;
+
+  return next();
 }
 
 function checksCreateTodosUserAvailability(request, response, next) {
-  // Complete aqui
+  const { user } = request;
+
+  if (!user.pro && user.todos.length >= 10) {
+    return response.status(403).json({ error: "You are not allowed to create todos!" });
+  }
+
+  return next();
 }
 
 function checksTodoExists(request, response, next) {
-  // Complete aqui
+  const { username } = request.headers;
+  const { id } = request.params;
+
+  const user = users.find(item => item.username === username);
+
+  if(!user) {
+    return response.status(404).json({ error: "User not found!" });
+  }
+
+  if(!validate(id)) {
+    return response.status(400).json({ error: "The ID format is not correct!" });
+  }
+
+  const todo = user.todos.find(item => item.id === id);
+
+  if(!todo) {
+    return response.status(404).json({ error: "Todo not found!" });
+  }
+
+  request.todo = todo;
+  request.user = user;
+
+  return next();
 }
 
 function findUserById(request, response, next) {
-  // Complete aqui
+  const { id } = request.params;
+
+  const user = users.find(item => item.id === id);
+  
+  if(!user) {
+    return response.status(404).json({ error: "User not found!" });
+  }
+
+  request.user = user;
+
+  return next(); 
 }
 
 app.post('/users', (request, response) => {
   const { name, username } = request.body;
 
-  const usernameAlreadyExists = users.some((user) => user.username === username);
+  const usernameAlreadyExists = users.some(item => item.username === username);
 
   if (usernameAlreadyExists) {
-    return response.status(400).json({ error: 'Username already exists' });
+    return response.status(400).json({ error: "Username already exists!" });
   }
 
   const user = {
@@ -40,7 +88,7 @@ app.post('/users', (request, response) => {
     username,
     pro: false,
     todos: []
-  };
+  }
 
   users.push(user);
 
@@ -57,7 +105,7 @@ app.patch('/users/:id/pro', findUserById, (request, response) => {
   const { user } = request;
 
   if (user.pro) {
-    return response.status(400).json({ error: 'Pro plan is already activated.' });
+    return response.status(404).json({ error: 'Pro plan is already activated.' });
   }
 
   user.pro = true;
@@ -78,8 +126,8 @@ app.post('/todos', checksExistsUserAccount, checksCreateTodosUserAvailability, (
   const newTodo = {
     id: uuidv4(),
     title,
-    deadline: new Date(deadline),
     done: false,
+    deadline: new Date(deadline),
     created_at: new Date()
   };
 
